@@ -1,0 +1,131 @@
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FRIENDLY - اختبار الصداقة</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#101114;color:#f5f5f5;font-family:Arial,sans-serif;padding:20px}
+main{max-width:600px;margin:auto}
+h1{color:#ff851b;font-size:38px}
+p{color:#bbb;line-height:1.8}
+.card{background:#1b1c20;border:1px solid #35363b;border-radius:16px;padding:18px;margin:18px 0}
+input,button{width:100%;padding:14px;margin:7px 0;border-radius:10px;font-size:16px}
+input{background:#101114;color:white;border:1px solid #555}
+button{background:#ff851b;color:#111;font-weight:bold;border:0;cursor:pointer}
+.option{background:#292a30;color:white;border:1px solid #444;text-align:right}
+small{color:#aaa}
+.hidden{display:none}
+li{padding:10px;border-bottom:1px solid #333}
+</style>
+</head>
+<body>
+<main>
+<h1>FRIENDLY 🧡</h1>
+<p>شحال يعرفوك صحابك؟ اصنع اختبارك وشوف شكون يعرفك أكثر!</p>
+<section id="create" class="card">
+<h2>اصنع اختبارك</h2>
+<label>اسمك</label>
+<input id="owner" placeholder="اكتب اسمك">
+<div id="questions"></div>
+<button onclick="addQuestion()">+ زيد سؤال</button>
+<button onclick="makeQuiz()">اصنع رابط الاختبار</button>
+</section>
+<section id="share" class="card hidden">
+<h2>اختبارك واجد!</h2>
+<p>ابعث الرابط لأصحابك:</p>
+<input id="quizLink" readonly>
+<button onclick="copyLink()">انسخ الرابط</button>
+<button onclick="showQuiz()">جرّب الاختبار</button>
+</section>
+<section id="answer" class="card hidden">
+<h2 id="quizTitle">اختبار الصداقة</h2>
+<input id="friend" placeholder="اسمك أنت">
+<div id="answerQuestions"></div>
+<button onclick="submitAnswers()">شوف نتيجتك</button>
+<p id="result"></p>
+</section>
+<section id="board" class="card hidden">
+<h2>🏆 ترتيب الأصدقاء</h2>
+<ol id="scores"></ol>
+<button onclick="newQuiz()">اصنع اختبارك أنت أيضاً</button>
+</section>
+</main>
+<script>
+let qs=[];
+let answers=[];
+let quizOwner="";
+function addQuestion(q="",opts=["","","",""],correct=0){
+const id=qs.length;
+qs.push({q,opts,correct});
+renderQuestions();
+}
+function renderQuestions(){
+document.getElementById("questions").innerHTML=qs.map((x,i)=>`
+<div class="card"><input placeholder="السؤال ${i+1}" value="${esc(x.q)}" onchange="qs[${i}].q=this.value">
+${x.opts.map((o,j)=>`<input placeholder="الخيار ${j+1}" value="${esc(o)}" onchange="qs[${i}].opts[${j}]=this.value">`).join("")}
+<small>اختار الإجابة الصحيحة:</small>
+<select onchange="qs[${i}].correct=+this.value" style="width:100%;padding:12px;background:#101114;color:white">
+${x.opts.map((o,j)=>`<option value="${j}" ${j===x.correct?"selected":""}>الخيار ${j+1}</option>`).join("")}
+</select></div>`).join("");
+}
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
+function makeQuiz(){
+quizOwner=document.getElementById("owner").value.trim();
+if(!quizOwner||!qs.length||qs.some(x=>!x.q.trim()||x.opts.some(o=>!o.trim()))){alert("عمّر اسمك والأسئلة والخيارات كامل");return}
+const data=btoa(unescape(encodeURIComponent(JSON.stringify({owner:quizOwner,qs}))));
+const url=location.href.split("#")[0]+"#quiz="+data;
+document.getElementById("quizLink").value=url;
+document.getElementById("share").classList.remove("hidden");
+}
+function showQuiz(){
+document.getElementById("create").classList.add("hidden");
+document.getElementById("share").classList.add("hidden");
+document.getElementById("answer").classList.remove("hidden");
+document.getElementById("quizTitle").textContent="شحال تعرف "+quizOwner+"؟";
+document.getElementById("answerQuestions").innerHTML=qs.map((x,i)=>`<div class="card"><p>${esc(x.q)}</p>${x.opts.map((o,j)=>`<button class="option" onclick="choose(${i},${j},this)">${esc(o)}</button>`).join("")}</div>`).join("");
+answers=Array(qs.length).fill(-1);
+}
+function choose(i,j,el){
+answers[i]=j;
+el.parentElement.querySelectorAll("button").forEach(b=>b.style.borderColor="#444");
+el.style.borderColor="#ff851b";
+}
+function submitAnswers(){
+const name=document.getElementById("friend").value.trim();
+if(!name||answers.includes(-1)){alert("اكتب اسمك وجاوب على كامل الأسئلة");return}
+let score=answers.filter((a,i)=>a===qs[i].correct).length;
+document.getElementById("result").textContent=`يا ${name، } جبت ${score} من ${qs.length} نقاط!`;
+document.getElementById("board").classList.remove("hidden");
+const list=JSON.parse(localStorage.getItem("friendlyScores")||"[]");
+list.push({name,score,total:qs.length,owner:quizOwner});
+localStorage.setItem("friendlyScores",JSON.stringify(list));
+document.getElementById("scores").innerHTML=list.filter(x=>x.owner===quizOwner).sort((a,b)=>b.score-a.score).map(x=>`<li>${esc(x.name)} — ${x.score}/${x.total}</li>`).join("");
+}
+function copyLink(){
+const el=document.getElementById("quizLink");el.select();document.execCommand("copy");alert("نسخت الرابط!");
+}
+function newQuiz(){
+location.href=location.href.split("#")[0];
+location.reload();
+}
+function loadShared(){
+const hash=location.hash;
+if(!hash.startsWith("#quiz="))return;
+try{
+const data=JSON.parse(decodeURIComponent(escape(atob(hash.slice(6)))));
+quizOwner=data.owner;qs=data.qs;
+document.getElementById("create").classList.add("hidden");
+document.getElementById("answer").classList.remove("hidden");
+showQuiz();
+}catch(e){alert("الرابط غير صالح")}
+}
+addQuestion("شنو هو لونك المفضل؟",["الأسود","الأزرق","الأحمر","الأخضر"],0);
+addQuestion("شنو هي هوايتك؟",["الألعاب","القراءة","الرياضة","الرسم"],0);
+addQuestion("شنو هو أكلك المفضل؟",["البيتزا","البرغر","المعكرونة","الشاورما"],0);
+loadShared();
+</script>
+</body>
+</html>
