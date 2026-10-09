@@ -1,0 +1,2 @@
+# FRIENDLY
+Friendship quiz website
